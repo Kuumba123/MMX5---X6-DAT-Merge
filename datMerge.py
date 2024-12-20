@@ -29,7 +29,7 @@ class Entry:
         else:
             print("No files in the list.")
 
-def process_text_file(text_file_path, output_file_name):
+def process_text_file(text_file_path, output_file_name, doubleSector):
     entries = []
     #Open the actual text file
     with open(text_file_path, 'r') as file:
@@ -57,8 +57,9 @@ def process_text_file(text_file_path, output_file_name):
         return
     
     sectorOffset = 1
-    if len(entries) > 0x100:
+    if len(entries) > 0x100 or doubleSector:
         sectorOffset = 2
+        doubleSector = True
     
     headerBytes = bytearray()
     dataBytes = bytearray()
@@ -68,14 +69,11 @@ def process_text_file(text_file_path, output_file_name):
         for file in entry.files:
             if os.path.exists(file):
                 with open(file, "rb") as readFile:
-                    filesData.append(bytearray(readFile.read()))
+                    filesData.extend(bytearray(readFile.read()))
             else:
                 print(f"ERROR: file - {file} does not exits")
                 return
-        #Perform Checks then dump the entry
-        if (len(filesData) % 4) != 0:
-            print("ERROR: entry size is not a multiple of 4")
-            return
+
         
         #Add Sector Offset and Size in Header
         headerBytes.append(sectorOffset & 0xFF)
@@ -89,20 +87,24 @@ def process_text_file(text_file_path, output_file_name):
 
         #Sector Align
         while (len(filesData) % 0x800) != 0:
-            filesData += bytearray(4)
+            filesData += bytearray(0x800 - (len(filesData) % 0x800))
         #add to data bytes
-        dataBytes.append(filesData)
+        dataBytes.extend(filesData)
 
         #Increase Sector Offset
-        sectorOffset += len(filesData) / 0x800
+        sectorOffset += len(filesData) // 0x800
     #######
 
     #Sector Align Header
     while (len(headerBytes) % 0x800) != 0:
+        headerBytes += bytearray(0x800 - (len(headerBytes) % 0x800))
+    if doubleSector and len(headerBytes) < 0x1000:
         headerBytes += bytearray(4)
+        while (len(headerBytes) % 0x800) != 0:
+            headerBytes += bytearray(0x800 - (len(headerBytes) % 0x800))
     
     #Merge Header and File Data then Write
-    headerBytes.append(dataBytes)
+    headerBytes.extend(dataBytes)
     with open(output_file_name, "wb") as output_file:
         output_file.write(headerBytes)
 
@@ -110,14 +112,19 @@ def process_text_file(text_file_path, output_file_name):
     print("Program Complted")
 
 #Start of Program
-if len(sys.argv) != 2:
+if len(sys.argv) < 3:
     print("Made by PogChampGuy AKA Kuumba")
     print("This Program is used for merging data info the file archive format used in MegaMan X5/X6")
-    print("Usage: python datMerge.py <input_textFileList> <output_fileName>")
+    print("Usage: python datMerge.py <input_textFileList> <output_fileName> [-d]")
 else:
     text_file_path = sys.argv[1]
     output_file_name = sys.argv[2]
+    doubleSectorHeader = False
+    if len(sys.argv) > 3:
+        if sys.argv[3] == "-d":
+            doubleSectorHeader = True
+    
     if os.path.exists(text_file_path):
-        process_text_file(text_file_path,output_file_name)
+        process_text_file(text_file_path,output_file_name, doubleSectorHeader)
     else:
         print("ERROR: input text file does not exists")
