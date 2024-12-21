@@ -49,12 +49,12 @@ def process_text_file(text_file_path, output_file_name, doubleSector):
 
     if len(entries) == 0:
         print("ERROR: no entries found in text file")
-        return
+        sys.exit(1)
     
     #Max of 0x200 entries (2 sector header)
     if len(entries) > 0x200:
         print("ERROR: Max entries is 0x200")
-        return
+        sys.exit(1)
     
     sectorOffset = 1
     if len(entries) > 0x100 or doubleSector:
@@ -72,7 +72,7 @@ def process_text_file(text_file_path, output_file_name, doubleSector):
                     filesData.extend(bytearray(readFile.read()))
             else:
                 print(f"ERROR: file - {file} does not exits")
-                return
+                sys.exit(1)
 
         
         #Add Sector Offset and Size in Header
@@ -110,6 +110,7 @@ def process_text_file(text_file_path, output_file_name, doubleSector):
 
     #=============
     print("Program Complted")
+    sys.exit(0)
 
 #Start of Program
 if len(sys.argv) < 3:
@@ -125,6 +126,11 @@ else:
             doubleSectorHeader = True
     
     if os.path.exists(text_file_path):
-        process_text_file(text_file_path,output_file_name, doubleSectorHeader)
+        try:
+            process_text_file(text_file_path,output_file_name, doubleSectorHeader)
+        except Exception as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            sys.exit(1)
     else:
         print("ERROR: input text file does not exists")
+        sys.exit(1)
