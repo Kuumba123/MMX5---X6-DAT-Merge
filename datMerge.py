@@ -38,7 +38,7 @@ def process_text_file(text_file_path, output_file_name, doubleSector):
     #Loop through each line of the text file
     for line in lines:
         cleaned_line = line.strip().replace(' ','').replace('\t','')
-        if "//" in cleaned_line:
+        if not cleaned_line or cleaned_line.startswith("//"):
             continue
         words = cleaned_line.split(',')
         entry = Entry()
